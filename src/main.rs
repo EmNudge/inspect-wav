@@ -1,7 +1,8 @@
-use comfy_table::Row;
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Table};
-use std::collections::BTreeMap;
 use std::{env, fs::File, io::Read, path::Path};
+use std::io::Cursor;
+use std::collections::BTreeMap;
+use byteorder::{LittleEndian, ReadBytesExt};
+use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Table, Row};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,31 +32,30 @@ fn main() {
     println!("{table}");
 }
 
-
-fn buf_to_str(buffer: &[u8]) -> String {
-    if buffer.len() == 2 {
-        u16::from_le_bytes(buffer.try_into().unwrap()).to_string()
-    } else {
-        u32::from_le_bytes(buffer.try_into().unwrap()).to_string()
-    }
-}
-
 fn parse_riff_chunk(buffer: &[u8]) -> Result<Vec<Row>, String> {
     let mut rows = vec![];
 
+    let mut cursor = Cursor::new(buffer);
+
+    let mut riff_buffer = [0; 4];
+    cursor.read_exact(&mut riff_buffer).unwrap();
+
     // RIFF chunk
-    if b"RIFF" == &buffer[..4] {
+    if b"RIFF" == &riff_buffer {
         rows.push(Row::from(vec!["chunk id", "'RIFF'"]));
     } else {
         return Err("Does not have 'RIFF' header".to_string());
     }
 
+    let file_size = cursor.read_u32::<LittleEndian>().unwrap();
     rows.push(Row::from(vec![
         "size of file (in bytes)",
-        &buf_to_str(&buffer[4..8]),
+        &file_size.to_string(),
     ]));
 
-    if b"WAVE" == &buffer[8..12] {
+    let mut wave_buffer = [0; 4];
+    cursor.read_exact(&mut wave_buffer).unwrap();
+    if b"WAVE" == &wave_buffer {
         rows.push(Row::from(vec!["wave identifier", "WAVE"]));
     } else {
         return Err("Does not have 'WAVE' identifier".to_string());
@@ -64,35 +64,42 @@ fn parse_riff_chunk(buffer: &[u8]) -> Result<Vec<Row>, String> {
     Ok(rows)
 }
 
+const COMPRESSION_CODES_STR: &'static str = include_str!("compression_codes.json");
+
 fn parse_fmt_chunk(buffer: &[u8]) -> Result<Vec<Row>, String> {
     let compression_codes_map = {
-        let compression_codes_str = include_str!("compression_codes.json");
         let compression_codes: Vec<(u16, String)> =
-            serde_json::from_str(compression_codes_str).unwrap();
+            serde_json::from_str(COMPRESSION_CODES_STR).unwrap();
         compression_codes
             .into_iter()
             .collect::<BTreeMap<u16, String>>()
     };
+    let get_compression_code_str = move |compression_code: u16| -> String {
+        compression_codes_map
+            .get(&compression_code)
+            .map_or("UNKNOWN".to_string(), |s| s.to_owned())
+    };
+
+    let mut cursor = Cursor::new(&buffer[12..]);
 
     let mut rows = vec![];
-    // fmt chunk
-    if b"fmt " == &buffer[12..16] {
+
+    let mut id_buffer = [0; 4];
+    cursor.read_exact(&mut id_buffer).unwrap();
+    if b"fmt " == &id_buffer {
         rows.push(Row::from(vec!["chunk id", "'fmt '"]));
     } else {
         return Err("Does not have 'fmt ' chunk".to_string());
     }
 
-    let chunk_size = u32::from_le_bytes(buffer[16..20].try_into().unwrap());
+    let chunk_size = cursor.read_u32::<LittleEndian>().unwrap();
     rows.push(Row::from(vec![
         "size of fmt chunk (in bytes)",
         &chunk_size.to_string(),
     ]));
 
-    let compression_code = u16::from_le_bytes(buffer[20..22].try_into().unwrap());
-    let compression_code_str_def = "UNKNOWN".to_string();
-    let compression_code_str = compression_codes_map
-        .get(&compression_code)
-        .unwrap_or(&compression_code_str_def);
+    let compression_code = cursor.read_u16::<LittleEndian>().unwrap();
+    let compression_code_str = get_compression_code_str(compression_code);
 
     rows.push(Row::from(vec![
         "compression code",
@@ -101,55 +108,60 @@ fn parse_fmt_chunk(buffer: &[u8]) -> Result<Vec<Row>, String> {
 
     rows.push(Row::from(vec![
         "number of channels",
-        &buf_to_str(&buffer[22..24]),
+        &cursor.read_u16::<LittleEndian>().unwrap().to_string(),
     ]));
     rows.push(Row::from(vec![
         "sampling rate",
-        &buf_to_str(&buffer[24..28]),
+        &cursor.read_u32::<LittleEndian>().unwrap().to_string(),
     ]));
-    rows.push(Row::from(vec!["byte rate", &buf_to_str(&buffer[28..32])]));
-    rows.push(Row::from(vec!["block align", &buf_to_str(&buffer[32..34])]));
+    rows.push(Row::from(vec![
+        "byte rate",
+        &cursor.read_u32::<LittleEndian>().unwrap().to_string(),
+    ]));
+    rows.push(Row::from(vec![
+        "block align",
+        &cursor.read_u16::<LittleEndian>().unwrap().to_string(),
+    ]));
     rows.push(Row::from(vec![
         "bits per sample",
-        &buf_to_str(&buffer[34..36]),
+        &cursor.read_u16::<LittleEndian>().unwrap().to_string(),
     ]));
 
     if chunk_size > 16 {
         // this should be 0 or 22
-        let _extra_fmt_bytes_num = u16::from_le_bytes(buffer[36..38].try_into().unwrap());
+        let _extra_fmt_bytes_num = cursor.read_u16::<LittleEndian>().unwrap();
 
         if chunk_size > 18 {
             rows.push(Row::from(vec![
                 "Number of valid bits",
-                &buf_to_str(&buffer[40..42]),
+                &cursor.read_u16::<LittleEndian>().unwrap().to_string(),
             ]));
 
             rows.push(Row::from(vec![
                 "Speaker position mask",
-                &buf_to_str(&buffer[42..46]),
+                &cursor.read_u32::<LittleEndian>().unwrap().to_string(),
             ]));
 
-            let compression_code = u16::from_le_bytes(buffer[46..48].try_into().unwrap());
-            let compression_code_str_def = "UNKNOWN".to_string();
-            let compression_code_str = compression_codes_map
-                .get(&compression_code)
-                .unwrap_or(&compression_code_str_def);
+            let compression_code = cursor.read_u16::<LittleEndian>().unwrap();
+            let compression_code_str = get_compression_code_str(compression_code);
 
             rows.push(Row::from(vec![
                 "Actual compression code",
                 &format!("{} ({})", compression_code, compression_code_str),
             ]));
 
-            let sub_format = &buffer[46..62]
+            // the GUID is 16 bytes, but the first 2 is the compression code 
+            // (which we just read)
+            let mut guid_string = [0; 14];
+            cursor.read_exact(&mut guid_string).unwrap();
+
+            let sub_format = guid_string
                 .into_iter()
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<String>>()
                 .join("");
-        
-            rows.push(Row::from(vec![
-                "GUID",
-                &sub_format,
-            ]));
+
+            rows.push(Row::from(vec!["GUID", &sub_format]));
         }
     }
 
