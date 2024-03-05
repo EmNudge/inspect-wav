@@ -115,21 +115,40 @@ fn parse_fmt_chunk(buffer: &[u8]) -> Result<Vec<Row>, String> {
     ]));
 
     if chunk_size > 16 {
-        let extra_fmt_bytes_num = u16::from_le_bytes(buffer[36..38].try_into().unwrap());
-        rows.push(Row::from(vec![
-            "number of extra format bytes",
-            &extra_fmt_bytes_num.to_string(),
-        ]));
+        // this should be 0 or 22
+        let _extra_fmt_bytes_num = u16::from_le_bytes(buffer[36..38].try_into().unwrap());
 
         if chunk_size > 18 {
-            let buffer_as_string = &buffer[40..(40 + extra_fmt_bytes_num as usize)]
+            rows.push(Row::from(vec![
+                "Number of valid bits",
+                &buf_to_str(&buffer[40..42]),
+            ]));
+
+            rows.push(Row::from(vec![
+                "Speaker position mask",
+                &buf_to_str(&buffer[42..46]),
+            ]));
+
+            let compression_code = u16::from_le_bytes(buffer[46..48].try_into().unwrap());
+            let compression_code_str_def = "UNKNOWN".to_string();
+            let compression_code_str = compression_codes_map
+                .get(&compression_code)
+                .unwrap_or(&compression_code_str_def);
+
+            rows.push(Row::from(vec![
+                "Actual compression code",
+                &format!("{} ({})", compression_code, compression_code_str),
+            ]));
+
+            let sub_format = &buffer[46..62]
                 .into_iter()
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<String>>()
-                .join(" ");
+                .join("");
+        
             rows.push(Row::from(vec![
-                "extra format bytes",
-                &buffer_as_string,
+                "GUID",
+                &sub_format,
             ]));
         }
     }
