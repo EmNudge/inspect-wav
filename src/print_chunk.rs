@@ -1,7 +1,7 @@
 use crate::parse_chunk::{ExtendedFmtChunk, FmtChunk, RiffChunk};
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
-pub fn print_riff_chunk(riff_chunk: RiffChunk) {
+pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 
@@ -16,7 +16,7 @@ pub fn print_riff_chunk(riff_chunk: RiffChunk) {
 
     println!("{table}");
 }
-pub fn print_fmt_chunk(fmt_chunk: FmtChunk, extended_chunk: Option<ExtendedFmtChunk>) {
+pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmtChunk>) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 

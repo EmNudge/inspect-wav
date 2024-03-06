@@ -28,7 +28,8 @@ fn main() {
 
     let mut cursor = Cursor::new(buffer);
     
-    print_riff_chunk(cursor.read_le::<RiffChunk>().unwrap());
+    print_riff_chunk(&cursor.read_le::<RiffChunk>().unwrap());
+    println!("parsed {} bytes", cursor.position());
 
     let fmt_chunk: FmtChunk = cursor.read_le().unwrap();
     if fmt_chunk.chunk_size > 16 {
@@ -37,9 +38,15 @@ fn main() {
 
     if fmt_chunk.chunk_size == 40 {
         let ext_fmt_chunk: ExtendedFmtChunk = cursor.read_le().unwrap();
-        print_fmt_chunk(fmt_chunk, Some(ext_fmt_chunk));
+        print_fmt_chunk(&fmt_chunk, Some(&ext_fmt_chunk));
     } else {
-        print_fmt_chunk(fmt_chunk, None);  
+        print_fmt_chunk(&fmt_chunk, None);  
+    }
+    println!("parsed {} bytes", cursor.position());
+
+    if fmt_chunk.compression_code != 1 {
+        let fact_chunk: FactChunk = cursor.read_le().unwrap();
+        dbg!(fact_chunk);
     }
 
     println!("parsed {} bytes", cursor.position());

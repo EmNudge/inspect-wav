@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 
 #[binrw]
 #[br(magic = b"RIFF")]
+#[derive(Debug)]
 pub struct RiffChunk {
     pub file_size: u32,
     wave_ident: [u8; 4],
@@ -26,6 +27,7 @@ lazy_static! {
 
 #[binrw]
 #[br(magic = b"fmt ")]
+#[derive(Debug)]
 pub struct FmtChunk {
     pub chunk_size: u32,
     pub compression_code: u16,
@@ -45,12 +47,15 @@ impl FmtChunk {
 
 // If the FmtChunk size is 40, this is the rest of it.
 #[binrw]
+#[derive(Debug)]
 pub struct ExtendedFmtChunk {
     pub extra_fmt_bytes_num: u16,
     pub num_valid_bits: u16,
     pub channel_mask: u32,
+    // first 2 bytes are compression code, next 14 are GUID "\x00\x00\x00\x00\x10\x00\x80\x00\x00\xAA\x00\x38\x9B\x71"
     pub sub_format: [u8; 16],
 }
+
 impl ExtendedFmtChunk {
     pub fn get_compression_code_str(&self) -> String {
         let compression_code = u16::from_le_bytes(self.sub_format[0..2].try_into().unwrap());
@@ -71,6 +76,7 @@ impl ExtendedFmtChunk {
 // If the compression_code is not PCM, there is a fact chunk
 #[binrw]
 #[br(magic = b"fact")]
+#[derive(Debug)]
 pub struct FactChunk {
     chunk_size: u32,
     sample_length: u32,
@@ -78,6 +84,7 @@ pub struct FactChunk {
 
 #[binrw]
 #[br(magic = b"data")]
+#[derive(Debug)]
 pub struct DataChunk {
     chunk_size: u32,
     #[br(count = chunk_size)]
