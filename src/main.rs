@@ -1,8 +1,13 @@
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Table};
 use std::{env, fs::File, io::Read, path::Path};
+use binrw::{io::Cursor, BinReaderExt};
+use byteorder::{LittleEndian, ReadBytesExt};
 
-mod fmt_chunk;
-mod riff_chunk;
+mod parse_chunk;
+mod print_chunk;
+
+use parse_chunk::{RiffChunk, FmtChunk, ExtendedFmtChunk, FactChunk, DataChunk};
+use print_chunk::{ print_fmt_chunk, print_riff_chunk };
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -18,26 +23,24 @@ fn main() {
 
     let mut file = File::open(path).unwrap();
 
-    let mut table = Table::new();
-    table.apply_modifier(UTF8_ROUND_CORNERS);
-
     let mut buffer = [0; 300];
     file.read(&mut buffer).unwrap();
 
-    let (riff_rows, cursor_position) = riff_chunk::parse_riff_chunk(&buffer).unwrap();
+    let mut cursor = Cursor::new(buffer);
+    
+    print_riff_chunk(cursor.read_le::<RiffChunk>().unwrap());
 
-    let mut table = Table::new();
-    table.apply_modifier(UTF8_ROUND_CORNERS);
-    table.add_rows(riff_rows);
-    println!("{table}");
+    let fmt_chunk: FmtChunk = cursor.read_le().unwrap();
+    if fmt_chunk.chunk_size > 16 {
+        cursor.read_u16::<LittleEndian>().unwrap();
+    } 
 
-    let (fmt_rows, cursor_position) =
-        fmt_chunk::parse_fmt_chunk(&buffer[(cursor_position as usize)..]).unwrap();
+    if fmt_chunk.chunk_size == 40 {
+        let ext_fmt_chunk: ExtendedFmtChunk = cursor.read_le().unwrap();
+        print_fmt_chunk(fmt_chunk, Some(ext_fmt_chunk));
+    } else {
+        print_fmt_chunk(fmt_chunk, None);  
+    }
 
-    let mut table = Table::new();
-    table.apply_modifier(UTF8_ROUND_CORNERS);
-    table.add_rows(fmt_rows);
-    println!("{table}");
-
-    println!("parsed {cursor_position} bytes");
+    println!("parsed {} bytes", cursor.position());
 }
