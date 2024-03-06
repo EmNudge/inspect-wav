@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Debug};
 use binrw::binrw;
 use lazy_static::lazy_static;
 
@@ -48,28 +48,27 @@ impl FmtChunk {
 // If the FmtChunk size is 40, this is the rest of it.
 #[binrw]
 #[derive(Debug)]
-pub struct ExtendedFmtChunk {
-    pub extra_fmt_bytes_num: u16,
+pub struct ExtendedFmtSubChunk {
     pub num_valid_bits: u16,
     pub channel_mask: u32,
     // first 2 bytes are compression code, next 14 are GUID "\x00\x00\x00\x00\x10\x00\x80\x00\x00\xAA\x00\x38\x9B\x71"
-    pub sub_format: [u8; 16],
+    pub compression_code: u16,
+    pub wave_guid: [u8; 14],
 }
 
-impl ExtendedFmtChunk {
+impl ExtendedFmtSubChunk {
     pub fn get_compression_code_str(&self) -> String {
-        let compression_code = u16::from_le_bytes(self.sub_format[0..2].try_into().unwrap());
         COMPRESSION_CODES_MAP
-            .get(&compression_code)
+            .get(&self.compression_code)
             .map_or("UNKNOWN".to_string(), |s| s.to_owned())
     }
 
     pub fn get_guid(&self) -> String {
-        self.sub_format
+        self.wave_guid
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<String>>()
-            .join("")
+            .join(" ")
     }
 }
 
@@ -80,6 +79,42 @@ impl ExtendedFmtChunk {
 pub struct FactChunk {
     chunk_size: u32,
     sample_length: u32,
+}
+
+// A LIST chunk may be present
+#[binrw]
+#[br(magic = b"LIST")]
+#[derive(Debug)]
+pub struct ListChunk {
+    pub chunk_size: u32,
+    
+    #[br(count = chunk_size, magic = b"INFO")]
+    pub data: Vec<u8>,
+}
+// A LIST chunk may contain many INFO subchunks.
+#[binrw]
+pub struct ListInfoSubChunk {
+    pub info_id: [u8; 4],
+    pub chunk_size: u32,
+
+    #[br(count = chunk_size)]
+    pub data: Vec<u8>,
+}
+impl ListInfoSubChunk {
+    pub fn get_info_id(&self) -> String {
+        String::from_utf8(self.info_id.to_vec()).unwrap()
+    }
+    pub fn get_text(&self) -> String {
+        String::from_utf8(self.data.clone()).unwrap()
+    }
+}
+
+impl Debug for ListInfoSubChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let info_id = String::from_utf8(self.info_id.to_vec()).unwrap();
+        let data = String::from_utf8(self.data.to_vec()).unwrap();
+        write!(f, "ListInfoSubChunk {{ info_id: {}, chunk_size: {}, data: {} }}", info_id, self.chunk_size, data)
+    }
 }
 
 #[binrw]

@@ -1,4 +1,4 @@
-use crate::parse_chunk::{ExtendedFmtChunk, FmtChunk, RiffChunk};
+use crate::parse_chunk::{ExtendedFmtSubChunk, FmtChunk, ListChunk, ListInfoSubChunk, RiffChunk};
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
 pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
@@ -16,7 +16,8 @@ pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
 
     println!("{table}");
 }
-pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmtChunk>) {
+
+pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmtSubChunk>) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 
@@ -28,7 +29,11 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmt
         ]),
         Row::from(vec![
             "compression code",
-            &fmt_chunk.get_compression_code_str(),
+            &format!(
+                "{} ({})",
+                fmt_chunk.compression_code,
+                fmt_chunk.get_compression_code_str()
+            ),
         ]),
         Row::from(vec![
             "number of channels",
@@ -46,10 +51,6 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmt
     if let Some(extended_chunk) = extended_chunk {
         table.add_rows(vec![
             Row::from(vec![
-                "Extra Format Bytes",
-                &extended_chunk.extra_fmt_bytes_num.to_string(),
-            ]),
-            Row::from(vec![
                 "Number of valid bits",
                 &extended_chunk.num_valid_bits.to_string(),
             ]),
@@ -59,11 +60,33 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmt
             ]),
             Row::from(vec![
                 "Actual compression code",
-                &extended_chunk.get_compression_code_str(),
+                &format!(
+                    "{} ({})",
+                    extended_chunk.compression_code,
+                    extended_chunk.get_compression_code_str()
+                ),
             ]),
-            Row::from(vec!["GUID", &extended_chunk.get_guid()]),
+            Row::from(vec!["WAV GUID", &extended_chunk.get_guid()]),
         ]);
     }
+
+    println!("{table}");
+}
+
+pub fn print_list_chunk(list_chunk: &ListChunk, list_sub_chunks: &Vec<ListInfoSubChunk>) {
+    let mut table = Table::new();
+    table.apply_modifier(UTF8_ROUND_CORNERS);
+
+    table.add_rows(vec![
+        Row::from(vec!["chunk id", "'LIST'"]),
+        Row::from(vec!["size of LIST chunk (in bytes)", &list_chunk.chunk_size.to_string()]),
+    ]);
+    table.add_rows(list_sub_chunks.iter().map(|sub_chunk| {
+        Row::from(vec![
+            sub_chunk.get_info_id(),
+            sub_chunk.get_text(),
+        ])
+    }));
 
     println!("{table}");
 }

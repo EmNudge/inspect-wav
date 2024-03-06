@@ -1,12 +1,14 @@
-use std::{env, fs::File, io::Read, path::Path};
 use binrw::{io::Cursor, BinReaderExt};
 use byteorder::{LittleEndian, ReadBytesExt};
+use std::{env, fs::File, io::{BufRead, Read}, path::Path};
 
 mod parse_chunk;
 mod print_chunk;
 
-use parse_chunk::{RiffChunk, FmtChunk, ExtendedFmtChunk, FactChunk, DataChunk};
-use print_chunk::{ print_fmt_chunk, print_riff_chunk };
+use parse_chunk::{ExtendedFmtSubChunk, FmtChunk, RiffChunk};
+use print_chunk::{print_fmt_chunk, print_riff_chunk};
+
+use crate::{parse_chunk::{ListChunk, ListInfoSubChunk}, print_chunk::print_list_chunk};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -23,31 +25,41 @@ fn main() {
 
     let mut file = File::open(path).unwrap();
 
-    let mut buffer = [0; 300];
+    let mut buffer = [0; 600];
     file.read(&mut buffer).unwrap();
 
     let mut cursor = Cursor::new(buffer);
-    
+
     print_riff_chunk(&cursor.read_le::<RiffChunk>().unwrap());
     println!("parsed {} bytes", cursor.position());
 
     let fmt_chunk: FmtChunk = cursor.read_le().unwrap();
     if fmt_chunk.chunk_size > 16 {
-        cursor.read_u16::<LittleEndian>().unwrap();
-    } 
+        assert!(cursor.read_u16::<LittleEndian>().unwrap() == 22);
+    }
 
     if fmt_chunk.chunk_size == 40 {
-        let ext_fmt_chunk: ExtendedFmtChunk = cursor.read_le().unwrap();
+        let ext_fmt_chunk: ExtendedFmtSubChunk = cursor.read_le().unwrap();
         print_fmt_chunk(&fmt_chunk, Some(&ext_fmt_chunk));
     } else {
-        print_fmt_chunk(&fmt_chunk, None);  
+        print_fmt_chunk(&fmt_chunk, None);
     }
     println!("parsed {} bytes", cursor.position());
 
-    if fmt_chunk.compression_code != 1 {
-        let fact_chunk: FactChunk = cursor.read_le().unwrap();
-        dbg!(fact_chunk);
+    let list_chunk: ListChunk = cursor.read_le().unwrap();
+    let mut list_info_sub_chunks = vec![];
+    {
+        let mut cursor = Cursor::new(list_chunk.data.clone());
+        while cursor.position() < list_chunk.chunk_size as u64 - 4 {
+            let sub_chunk: ListInfoSubChunk = cursor.read_le().unwrap();
+            // increment if odd-number of bytes was parsed
+            if cursor.position() % 2 == 1 {
+                cursor.consume(1);
+            }
+            list_info_sub_chunks.push(sub_chunk);
+        }
     }
+    print_list_chunk(&list_chunk, &list_info_sub_chunks);
 
     println!("parsed {} bytes", cursor.position());
 }
