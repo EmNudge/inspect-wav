@@ -1,5 +1,5 @@
 use crate::parse_chunk::{
-    get_compression_code_str, FmtChunk, ListInfoChunk, RiffChunk,
+    get_compression_code_str, DataChunk, FmtChunk, ListInfoChunk, RiffChunk
 };
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
@@ -99,6 +99,25 @@ pub fn print_list_chunk(list_chunk: &ListInfoChunk) {
             .iter()
             .map(|sub_chunk| Row::from(vec![sub_chunk.info_id.clone(), sub_chunk.text.clone()])),
     );
+
+    println!("{table}");
+}
+
+pub fn print_data_chunk(data_chunk: &DataChunk) {
+    let mut table = Table::new();
+    table.apply_modifier(UTF8_ROUND_CORNERS);
+
+    table.add_rows(vec![
+        Row::from(vec!["chunk id", "'data'"]),
+        Row::from(vec![
+            "size of data chunk (in bytes)",
+            &data_chunk.chunk_size.to_string(),
+        ]),
+        Row::from(vec![
+            "data... (minimized)",
+            &format!("[ ...{} items ]", &data_chunk.sample_data.len()),
+        ]),
+    ]);
 
     println!("{table}");
 }

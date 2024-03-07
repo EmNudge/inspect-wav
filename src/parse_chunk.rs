@@ -42,7 +42,6 @@ pub struct FmtChunk {
     #[br(if(chunk_size == 40))]
     pub extended_fmt_sub_chunk: Option<ExtendedFmtSubChunk>,
 }
-
 // If the FmtChunk size is 40, this is the rest of it.
 #[derive(Debug, BinRead)]
 pub struct ExtendedFmtSubChunk {
@@ -54,7 +53,7 @@ pub struct ExtendedFmtSubChunk {
     pub wav_guid: [u8; 14],
 }
 
-// If the compression_code is not PCM, there is a fact chunk
+// If the compression_code is *not* PCM, there is a fact chunk
 #[binrw]
 #[br(magic = b"fact")]
 #[derive(Debug)]
@@ -72,12 +71,13 @@ pub struct ListInfoChunk {
     // how do we do count with chunk_size on structured info
     #[br(
         magic = b"INFO", 
+        // use map_stream to make a new stream of only size chunk_size
         map_stream = |s| s.take_seek(chunk_size.into()),
+        // read until end of input (the rest of chunk_size buffer)
         parse_with = binrw::helpers::until_eof
     )]
     pub data: Vec<ListInfoSubChunk>,
 }
-// A LIST chunk may contain many INFO subchunks.
 #[derive(BinRead, Debug)]
 pub struct ListInfoSubChunk {
     #[br(map = |x: [u8; 4]| String::from_utf8(x.to_vec()).unwrap())]
@@ -97,7 +97,7 @@ pub struct ListInfoSubChunk {
 #[br(magic = b"data")]
 #[derive(Debug)]
 pub struct DataChunk {
-    chunk_size: u32,
+    pub chunk_size: u32,
     #[br(count = chunk_size)]
-    sample_data: Vec<u8>,
+    pub sample_data: Vec<u8>,
 }
