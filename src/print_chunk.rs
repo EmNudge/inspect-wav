@@ -1,5 +1,5 @@
 use crate::parse_chunk::{
-    get_compression_code_str, FmtChunk, ListInfoChunk, ListInfoSubChunk, RiffChunk,
+    get_compression_code_str, FmtChunk, ListInfoChunk, RiffChunk,
 };
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
@@ -83,7 +83,7 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
     println!("{table}");
 }
 
-pub fn print_list_chunk(list_chunk: &ListInfoChunk, list_sub_chunks: &Vec<ListInfoSubChunk>) {
+pub fn print_list_chunk(list_chunk: &ListInfoChunk) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 
@@ -95,7 +95,7 @@ pub fn print_list_chunk(list_chunk: &ListInfoChunk, list_sub_chunks: &Vec<ListIn
         ]),
     ]);
     table.add_rows(
-        list_sub_chunks
+        list_chunk.data
             .iter()
             .map(|sub_chunk| Row::from(vec![sub_chunk.info_id.clone(), sub_chunk.text.clone()])),
     );

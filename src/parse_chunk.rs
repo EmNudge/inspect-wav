@@ -1,12 +1,10 @@
 use std::{collections::BTreeMap, fmt::Debug};
-use binrw::{binrw, BinRead};
+use binrw::{binrw, BinRead, io::TakeSeekExt};
 use lazy_static::lazy_static;
-
-const COMPRESSION_CODES_STR: &'static str = include_str!("compression_codes.json");
 
 lazy_static! {
     static ref COMPRESSION_CODES_MAP: BTreeMap<u16, String> =
-        serde_json::from_str::<Vec<(u16, String)>>(COMPRESSION_CODES_STR)
+        serde_json::from_str::<Vec<(u16, String)>>(include_str!("compression_codes.json"))
             .unwrap()
             .into_iter()
             .collect();
@@ -66,18 +64,21 @@ pub struct FactChunk {
 }
 
 // A LIST chunk may be present
-#[binrw]
+#[derive(BinRead, Debug)]
 #[br(magic = b"LIST")]
-#[derive(Debug)]
 pub struct ListInfoChunk {
     pub chunk_size: u32,
     
     // how do we do count with chunk_size on structured info
-    #[br(count = chunk_size, magic = b"INFO")]
-    pub data: Vec<u8>,
+    #[br(
+        magic = b"INFO", 
+        map_stream = |s| s.take_seek(chunk_size.into()),
+        parse_with = binrw::helpers::until_eof
+    )]
+    pub data: Vec<ListInfoSubChunk>,
 }
 // A LIST chunk may contain many INFO subchunks.
-#[derive(BinRead)]
+#[derive(BinRead, Debug)]
 pub struct ListInfoSubChunk {
     #[br(map = |x: [u8; 4]| String::from_utf8(x.to_vec()).unwrap())]
     pub info_id: String,

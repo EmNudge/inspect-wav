@@ -4,13 +4,8 @@ use std::{env, fs::File, io::Read, path::Path};
 mod parse_chunk;
 mod print_chunk;
 
-use parse_chunk::{FmtChunk, RiffChunk};
-use print_chunk::{print_fmt_chunk, print_riff_chunk};
-
-use crate::{
-    parse_chunk::{ListInfoChunk, ListInfoSubChunk},
-    print_chunk::print_list_chunk,
-};
+use parse_chunk::{RiffChunk, FmtChunk, ListInfoChunk};
+use print_chunk::{print_fmt_chunk, print_riff_chunk, print_list_chunk};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -41,15 +36,7 @@ fn main() {
     println!("parsed {} bytes", cursor.position());
 
     let list_chunk: ListInfoChunk = cursor.read_le().unwrap();
-    let mut list_info_sub_chunks = vec![];
-    {
-        let mut cursor = Cursor::new(list_chunk.data.clone());
-        while cursor.position() < list_chunk.chunk_size as u64 - 4 {
-            let sub_chunk: ListInfoSubChunk = cursor.read_le().unwrap();
-            list_info_sub_chunks.push(sub_chunk);
-        }
-    }
-    print_list_chunk(&list_chunk, &list_info_sub_chunks);
+    print_list_chunk(&list_chunk);
 
     println!("parsed {} bytes", cursor.position());
 }
