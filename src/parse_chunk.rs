@@ -36,6 +36,12 @@ pub struct FmtChunk {
     pub byte_rate: u32,
     pub block_align: u16,
     pub bits_per_sample: u16,
+
+    #[br(if(chunk_size == 18 || chunk_size == 40))]
+    extra_bytes: Option<u16>,
+
+    #[br(if(chunk_size == 40))]
+    pub extended_fmt_sub_chunk: Option<ExtendedFmtSubChunk>,
 }
 impl FmtChunk {
     pub fn get_compression_code_str(&self) -> String {
@@ -85,9 +91,10 @@ pub struct FactChunk {
 #[binrw]
 #[br(magic = b"LIST")]
 #[derive(Debug)]
-pub struct ListChunk {
+pub struct ListInfoChunk {
     pub chunk_size: u32,
     
+    // how do we do count with chunk_size on structured info
     #[br(count = chunk_size, magic = b"INFO")]
     pub data: Vec<u8>,
 }
@@ -97,7 +104,8 @@ pub struct ListInfoSubChunk {
     pub info_id: [u8; 4],
     pub chunk_size: u32,
 
-    #[br(count = chunk_size)]
+    // round up evenly (might be able to use align_after instead)
+    #[br(count = (chunk_size + 1) & !1)]
     pub data: Vec<u8>,
 }
 impl ListInfoSubChunk {

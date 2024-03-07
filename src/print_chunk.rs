@@ -1,4 +1,4 @@
-use crate::parse_chunk::{ExtendedFmtSubChunk, FmtChunk, ListChunk, ListInfoSubChunk, RiffChunk};
+use crate::parse_chunk::{FmtChunk, ListInfoChunk, ListInfoSubChunk, RiffChunk};
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
 pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
@@ -17,7 +17,7 @@ pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
     println!("{table}");
 }
 
-pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmtSubChunk>) {
+pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 
@@ -48,7 +48,7 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmt
         ]),
     ]);
 
-    if let Some(extended_chunk) = extended_chunk {
+    if let Some(extended_chunk) = &fmt_chunk.extended_fmt_sub_chunk {
         table.add_rows(vec![
             Row::from(vec![
                 "Number of valid bits",
@@ -73,7 +73,7 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk, extended_chunk: Option<&ExtendedFmt
     println!("{table}");
 }
 
-pub fn print_list_chunk(list_chunk: &ListChunk, list_sub_chunks: &Vec<ListInfoSubChunk>) {
+pub fn print_list_chunk(list_chunk: &ListInfoChunk, list_sub_chunks: &Vec<ListInfoSubChunk>) {
     let mut table = Table::new();
     table.apply_modifier(UTF8_ROUND_CORNERS);
 
