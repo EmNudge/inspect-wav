@@ -2,19 +2,6 @@ use std::{collections::BTreeMap, fmt::Debug};
 use binrw::{binrw, BinRead};
 use lazy_static::lazy_static;
 
-#[binrw]
-#[br(magic = b"RIFF")]
-#[derive(Debug)]
-pub struct RiffChunk {
-    pub file_size: u32,
-    wave_ident: [u8; 4],
-}
-impl RiffChunk {
-    pub fn get_wave_ident(&self) -> String {
-        String::from_utf8(self.wave_ident.to_vec()).unwrap()
-    }
-}
-
 const COMPRESSION_CODES_STR: &'static str = include_str!("compression_codes.json");
 
 lazy_static! {
@@ -25,9 +12,23 @@ lazy_static! {
             .collect();
 }
 
-#[binrw]
+pub fn get_compression_code_str(compression_code: u16) -> String {
+    COMPRESSION_CODES_MAP
+        .get(&compression_code)
+        .map_or("UNKNOWN".to_string(), |s| s.to_owned())
+}
+
+#[derive(Debug, BinRead)]
+#[br(magic = b"RIFF")]
+pub struct RiffChunk {
+    pub file_size: u32,
+
+    #[br(map = |s: [u8; 4]| String::from_utf8(s.to_vec()).unwrap())]
+    pub wave_ident: String,
+}
+
+#[derive(Debug, BinRead)]
 #[br(magic = b"fmt ")]
-#[derive(Debug)]
 pub struct FmtChunk {
     pub chunk_size: u32,
     pub compression_code: u16,
@@ -38,44 +39,21 @@ pub struct FmtChunk {
     pub bits_per_sample: u16,
 
     #[br(if(chunk_size == 18 || chunk_size == 40))]
-    extra_bytes: Option<u16>,
+    _extra_bytes: Option<u16>,
 
     #[br(if(chunk_size == 40))]
     pub extended_fmt_sub_chunk: Option<ExtendedFmtSubChunk>,
 }
-impl FmtChunk {
-    pub fn get_compression_code_str(&self) -> String {
-        COMPRESSION_CODES_MAP
-            .get(&self.compression_code)
-            .map_or("UNKNOWN".to_string(), |s| s.to_owned())
-    }
-}
 
 // If the FmtChunk size is 40, this is the rest of it.
-#[binrw]
-#[derive(Debug)]
+#[derive(Debug, BinRead)]
 pub struct ExtendedFmtSubChunk {
     pub num_valid_bits: u16,
     pub channel_mask: u32,
     // first 2 bytes are compression code, next 14 are GUID "\x00\x00\x00\x00\x10\x00\x80\x00\x00\xAA\x00\x38\x9B\x71"
     pub compression_code: u16,
-    pub wave_guid: [u8; 14],
-}
 
-impl ExtendedFmtSubChunk {
-    pub fn get_compression_code_str(&self) -> String {
-        COMPRESSION_CODES_MAP
-            .get(&self.compression_code)
-            .map_or("UNKNOWN".to_string(), |s| s.to_owned())
-    }
-
-    pub fn get_guid(&self) -> String {
-        self.wave_guid
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<String>>()
-            .join(" ")
-    }
+    pub wav_guid: [u8; 14],
 }
 
 // If the compression_code is not PCM, there is a fact chunk

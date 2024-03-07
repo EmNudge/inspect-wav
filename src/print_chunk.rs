@@ -1,4 +1,6 @@
-use crate::parse_chunk::{FmtChunk, ListInfoChunk, ListInfoSubChunk, RiffChunk};
+use crate::parse_chunk::{
+    get_compression_code_str, FmtChunk, ListInfoChunk, ListInfoSubChunk, RiffChunk,
+};
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, Row, Table};
 
 pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
@@ -11,7 +13,7 @@ pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
             "size of file (in bytes)",
             &riff_chunk.file_size.to_string(),
         ]),
-        Row::from(vec!["wave identifier", &riff_chunk.get_wave_ident()]),
+        Row::from(vec!["wave identifier", &riff_chunk.wave_ident]),
     ]);
 
     println!("{table}");
@@ -32,7 +34,7 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
             &format!(
                 "{} ({})",
                 fmt_chunk.compression_code,
-                fmt_chunk.get_compression_code_str()
+                get_compression_code_str(fmt_chunk.compression_code),
             ),
         ]),
         Row::from(vec![
@@ -63,10 +65,18 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
                 &format!(
                     "{} ({})",
                     extended_chunk.compression_code,
-                    extended_chunk.get_compression_code_str()
+                    get_compression_code_str(extended_chunk.compression_code),
                 ),
             ]),
-            Row::from(vec!["WAV GUID", &extended_chunk.get_guid()]),
+            Row::from(vec![
+                "WAV GUID",
+                &extended_chunk
+                    .wav_guid
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            ]),
         ]);
     }
 
