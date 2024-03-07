@@ -1,5 +1,5 @@
 use std::{collections::BTreeMap, fmt::Debug};
-use binrw::binrw;
+use binrw::{binrw, BinRead};
 use lazy_static::lazy_static;
 
 #[binrw]
@@ -99,30 +99,19 @@ pub struct ListInfoChunk {
     pub data: Vec<u8>,
 }
 // A LIST chunk may contain many INFO subchunks.
-#[binrw]
+#[derive(BinRead)]
 pub struct ListInfoSubChunk {
-    pub info_id: [u8; 4],
+    #[br(map = |x: [u8; 4]| String::from_utf8(x.to_vec()).unwrap())]
+    pub info_id: String,
     pub chunk_size: u32,
 
-    // round up evenly (might be able to use align_after instead)
-    #[br(count = (chunk_size + 1) & !1)]
-    pub data: Vec<u8>,
-}
-impl ListInfoSubChunk {
-    pub fn get_info_id(&self) -> String {
-        String::from_utf8(self.info_id.to_vec()).unwrap()
-    }
-    pub fn get_text(&self) -> String {
-        String::from_utf8(self.data.clone()).unwrap()
-    }
-}
-
-impl Debug for ListInfoSubChunk {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let info_id = String::from_utf8(self.info_id.to_vec()).unwrap();
-        let data = String::from_utf8(self.data.to_vec()).unwrap();
-        write!(f, "ListInfoSubChunk {{ info_id: {}, chunk_size: {}, data: {} }}", info_id, self.chunk_size, data)
-    }
+    #[br(
+        count = chunk_size, 
+        // parse even amount of bytes.
+        align_after = 2, 
+        map = |x: Vec<u8>| String::from_utf8(x).unwrap()
+    )]
+    pub text: String,
 }
 
 #[binrw]

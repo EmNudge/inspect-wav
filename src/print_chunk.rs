@@ -79,14 +79,16 @@ pub fn print_list_chunk(list_chunk: &ListInfoChunk, list_sub_chunks: &Vec<ListIn
 
     table.add_rows(vec![
         Row::from(vec!["chunk id", "'LIST'"]),
-        Row::from(vec!["size of LIST chunk (in bytes)", &list_chunk.chunk_size.to_string()]),
-    ]);
-    table.add_rows(list_sub_chunks.iter().map(|sub_chunk| {
         Row::from(vec![
-            sub_chunk.get_info_id(),
-            sub_chunk.get_text(),
-        ])
-    }));
+            "size of LIST chunk (in bytes)",
+            &list_chunk.chunk_size.to_string(),
+        ]),
+    ]);
+    table.add_rows(
+        list_sub_chunks
+            .iter()
+            .map(|sub_chunk| Row::from(vec![sub_chunk.info_id.clone(), sub_chunk.text.clone()])),
+    );
 
     println!("{table}");
 }
