@@ -1,48 +1,67 @@
 use crate::parse_chunk::{get_compression_code_str, DataChunk, FmtChunk, ListInfoChunk, RiffChunk};
 use owo_colors::OwoColorize;
 
-fn print_rows(rows: Vec<(&str, &str)>) {
-    let max_width = rows.iter().map(|(k, _v)| k.len()).max().unwrap();
-    let line = "-".repeat(max_width);
+fn print_rows(rows: Vec<(impl ToString, impl ToString)>) {
+    let string_rows: Vec<(String, String)> = rows
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
 
-    println!("{}", format!("╭--{}", &line).dimmed());
-    let table = rows
+    let max_key_width = string_rows.iter().map(|(k, _v)| k.len()).max().unwrap();
+    let max_value_width = string_rows.iter().map(|(_k, v)| v.len()).max().unwrap();
+
+    println!(
+        "{}",
+        format!("╭{}", "-".repeat(max_key_width + max_value_width + 4)).dimmed()
+    );
+    let table = string_rows
         .iter()
         .map(|(k, v)| {
             format!(
                 "{} {k}{}{v}",
                 "|".dimmed(),
-                " ".repeat(max_width - k.len() + 4)
+                " ".repeat(max_key_width - k.len() + 4),
             )
         })
         .collect::<Vec<String>>()
-        .join(&format!("\n|---{}\n", &line).dimmed().to_string());
+        .join(
+            &format!(
+                "\n|{}+{}\n",
+                "-".repeat(max_key_width + 2),
+                "-".repeat(max_value_width)
+            )
+            .dimmed()
+            .to_string(),
+        );
 
     println!("{}", table);
-    println!("{}", format!("╰--{}", &line).dimmed());
+    println!(
+        "{}",
+        format!("╰{}", "-".repeat(max_key_width + max_value_width + 4)).dimmed()
+    );
 }
 
 pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
     print_rows(vec![
-        ("chunk id", &"'RIFF'".blue().to_string()),
+        ("chunk id", "'RIFF'".blue().to_string()),
         (
             "size of file (in bytes)",
-            &riff_chunk.file_size.to_string().green().to_string(),
+            riff_chunk.file_size.green().to_string(),
         ),
-        ("wave identifier", &riff_chunk.wave_ident),
+        ("wave identifier", riff_chunk.wave_ident.to_string()),
     ]);
 }
 
 pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
-    print_rows(vec![
-        ("chunk id", &"'fmt '".blue().to_string()),
+    let mut rows = vec![
+        ("chunk id", "'fmt '".blue().to_string()),
         (
             "size of fmt chunk (in bytes)",
-            &fmt_chunk.chunk_size.to_string().green().to_string(),
+            fmt_chunk.chunk_size.to_string().green().to_string(),
         ),
         (
             "compression code",
-            &format!(
+            format!(
                 "{} ({})",
                 fmt_chunk.compression_code,
                 get_compression_code_str(fmt_chunk.compression_code),
@@ -50,27 +69,27 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
         ),
         (
             "number of channels",
-            &fmt_chunk.number_of_channels.to_string(),
+            fmt_chunk.number_of_channels.to_string(),
         ),
-        ("sampling rate", &fmt_chunk.sample_rate.to_string()),
-        ("byte rate", &fmt_chunk.byte_rate.to_string()),
-        ("block align", &fmt_chunk.block_align.to_string()),
-        ("bits per sample", &fmt_chunk.bits_per_sample.to_string()),
-    ]);
+        ("sampling rate", fmt_chunk.sample_rate.to_string()),
+        ("byte rate", fmt_chunk.byte_rate.to_string()),
+        ("block align", fmt_chunk.block_align.to_string()),
+        ("bits per sample", fmt_chunk.bits_per_sample.to_string()),
+    ];
 
     if let Some(extended_chunk) = &fmt_chunk.extended_fmt_sub_chunk {
-        print_rows(vec![
+        rows.extend(vec![
             (
                 "Number of valid bits",
-                &extended_chunk.num_valid_bits.to_string(),
+                extended_chunk.num_valid_bits.to_string(),
             ),
             (
                 "Speaker position mask",
-                &extended_chunk.channel_mask.to_string(),
+                extended_chunk.channel_mask.to_string(),
             ),
             (
                 "Actual compression code",
-                &format!(
+                format!(
                     "{} ({})",
                     extended_chunk.compression_code,
                     get_compression_code_str(extended_chunk.compression_code),
@@ -78,7 +97,7 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
             ),
             (
                 "WAV GUID",
-                &extended_chunk
+                extended_chunk
                     .wav_guid
                     .iter()
                     .map(|b| format!("{:02X}", b))
@@ -87,6 +106,8 @@ pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
             ),
         ]);
     }
+
+    print_rows(rows);
 }
 
 pub fn print_list_chunk(list_chunk: &ListInfoChunk) {
