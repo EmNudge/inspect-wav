@@ -37,7 +37,7 @@ pub struct FmtChunk {
     pub bits_per_sample: u16,
 
     #[br(if(chunk_size == 18 || chunk_size == 40))]
-    _extra_bytes: Option<u16>,
+    pub extra_bytes: Option<u16>, // should just be '22'
 
     #[br(if(chunk_size == 40))]
     pub extended_fmt_sub_chunk: Option<ExtendedFmtSubChunk>,
