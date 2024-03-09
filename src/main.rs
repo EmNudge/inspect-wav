@@ -5,12 +5,15 @@ mod parse_chunk;
 mod print_chunk;
 mod print_utils;
 
-use parse_chunk::{FmtChunk, ListInfoChunk, RiffChunk, DataChunk};
-use print_chunk::{print_fmt_chunk, print_list_chunk, print_riff_chunk, print_data_chunk};
+use parse_chunk::{DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
+use print_chunk::{
+    print_data_chunk, print_fmt_chunk, print_id3_chunk, print_list_chunk, print_riff_chunk,
+};
 use print_utils::print_position;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    println!("");
 
     let Some(path) = args.get(1) else {
         println!("Usage: inspect_wav <path to wav file>");
@@ -27,24 +30,34 @@ fn main() {
     let mut buffer: Vec<u8> = vec![];
     file.read_to_end(&mut buffer).unwrap();
 
-    let mut cursor = Cursor::new(buffer);
+    let mut cursor = Cursor::new(&buffer);
 
     let riff_chunk: RiffChunk = cursor.read_le().unwrap();
     print_riff_chunk(&riff_chunk);
     print_position(&cursor);
 
-    let fmt_chunk: FmtChunk = cursor.read_le().unwrap();
-    print_fmt_chunk(&fmt_chunk);
-    print_position(&cursor);
-
-    let list_chunk: ListInfoChunk = cursor.read_le().unwrap();
-    print_list_chunk(&list_chunk);
-    print_position(&cursor);
-
-    let data_chunk: DataChunk = cursor.read_le().unwrap();
-    print_data_chunk(&data_chunk);
-    print_position(&cursor);
-
     // riff_chunk.file_size excludes the RIFF header and the u32 describing the size (4 + 4 bytes)
-    assert!(riff_chunk.file_size == cursor.position() as u32 - 8);
+    while cursor.position() as u32 - 8 < riff_chunk.file_size {
+        if let Ok(fmt_chunk) = cursor.read_le::<FmtChunk>() {
+            print_fmt_chunk(&fmt_chunk);
+        } else if let Ok(data_chunk) = cursor.read_le::<DataChunk>() {
+            print_data_chunk(&data_chunk);
+        } else if let Ok(list_chunk) = cursor.read_le::<ListInfoChunk>() {
+            print_list_chunk(&list_chunk);
+        } else if let Ok(id3_chunk) = cursor.read_le::<ID3v2Chunk>() {
+            print_id3_chunk(&id3_chunk);
+        } else {
+            let mut word_buff = [0u8; 4];
+            cursor.read_exact(&mut word_buff).unwrap();
+            println!(
+                "ERR: unknown chunk: {:?}",
+                String::from_utf8(word_buff.to_vec()).unwrap()
+            );
+            return;
+        }
+        print_position(&cursor);
+    }
+
+    assert!(cursor.position() as usize == buffer.len());
+    println!("\nFinished parsing!");
 }

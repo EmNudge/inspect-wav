@@ -1,4 +1,4 @@
-use crate::parse_chunk::{get_compression_code_str, DataChunk, FmtChunk, ListInfoChunk, RiffChunk};
+use crate::parse_chunk::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
 use crate::print_utils::print_rows;
 use owo_colors::OwoColorize;
 
@@ -112,4 +112,40 @@ pub fn print_data_chunk(data_chunk: &DataChunk) {
             &format!("[ ...{} items ]", &data_chunk.sample_data.len()),
         ),
     ]);
+}
+
+pub fn print_id3_chunk(id3_chunk: &ID3v2Chunk) {
+    let mut rows = vec![
+        ("chunk id", "'id3'".blue().to_string()),
+        (
+            "size of id3 chunk (in bytes)",
+            id3_chunk.chunk_size.to_string().green().to_string(),
+        ),
+        (
+            "major version",
+            id3_chunk.major_version.to_string(),
+        ),
+        (
+            "minor version",
+            id3_chunk.minor_version.to_string(),
+        ),
+        (
+            "flags",
+            format!("{:08b}", id3_chunk.flags),
+        ),
+        (
+            "size of id3v2 (self reported)",
+            id3_chunk.id3v2_size.to_string(),
+        ),
+    ];
+
+    if let Some(_xheader) = &id3_chunk.xheader {
+        todo!();
+    }
+
+    for tag in &id3_chunk.tags {
+        rows.push(("tag", format!("{}: {}", tag.frame_id, tag.data)));
+    }
+
+    print_rows(rows);
 }

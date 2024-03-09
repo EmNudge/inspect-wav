@@ -4,7 +4,7 @@ use owo_colors::OwoColorize;
 pub fn print_position<T>(cursor: &Cursor<T>) {
     println!(
         "{}",
-        format!("| parsed {} bytes", cursor.position()).dimmed()
+        format!("| parsed {} bytes\n", cursor.position()).dimmed()
     );
 }
 
