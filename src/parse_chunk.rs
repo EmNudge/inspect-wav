@@ -130,7 +130,9 @@ pub struct ID3v2Chunk {
 
     #[br(
         map_stream = |s| s.take_seek(id3v2_size.into()),
-        parse_with = binrw::helpers::until_eof
+        parse_with = binrw::helpers::until_eof,
+        // if id3v2_size is odd, throw away a byte
+        align_after = 2,
     )]
     pub tags: Vec<ID3v2TagSubChunk>,
 }
