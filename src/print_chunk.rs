@@ -1,4 +1,4 @@
-use crate::parse_chunk::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
+use crate::parse::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
 use crate::print_utils::print_rows;
 use owo_colors::OwoColorize;
 

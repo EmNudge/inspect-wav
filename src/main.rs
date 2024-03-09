@@ -1,11 +1,11 @@
 use binrw::{io::Cursor, BinReaderExt};
 use std::{env, fs::File, io::Read, path::Path};
 
-mod parse_chunk;
+mod parse;
 mod print_chunk;
 mod print_utils;
 
-use parse_chunk::{DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
+use parse::{DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
 use print_chunk::{
     print_data_chunk, print_fmt_chunk, print_id3_chunk, print_list_chunk, print_riff_chunk,
 };
