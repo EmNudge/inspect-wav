@@ -11,6 +11,8 @@ use print_chunk::{
 };
 use print_utils::print_position;
 
+use crate::{parse::UnknownChunk, print_chunk::print_unknown_chunk};
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("");
@@ -46,6 +48,8 @@ fn main() {
             print_list_chunk(&list_chunk);
         } else if let Ok(id3_chunk) = cursor.read_le::<ID3v2Chunk>() {
             print_id3_chunk(&id3_chunk);
+        } else if let Ok(unknown_chunk) = cursor.read_le::<UnknownChunk>() {
+            print_unknown_chunk(&unknown_chunk);
         } else {
             let mut word_buff = [0u8; 4];
             cursor.read_exact(&mut word_buff).unwrap();

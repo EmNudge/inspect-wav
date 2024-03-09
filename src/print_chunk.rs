@@ -1,4 +1,4 @@
-use crate::parse::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk};
+use crate::parse::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk, UnknownChunk};
 use crate::print_utils::print_rows;
 use owo_colors::OwoColorize;
 
@@ -148,4 +148,19 @@ pub fn print_id3_chunk(id3_chunk: &ID3v2Chunk) {
     }
 
     print_rows(rows);
+}
+
+
+pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
+    print_rows(vec![
+        ("chunk id", format!("{} (unknown)", unknown_chunk.chunk_id)),
+        (
+            "size of file (in bytes)",
+            unknown_chunk.chunk_size.green().to_string(),
+        ),
+        (
+            "data... (minimized)",
+            format!("[ ...{} items ]", &unknown_chunk.data.len()),
+        ),
+    ]);
 }

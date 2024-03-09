@@ -13,6 +13,8 @@ pub use id3v2_chunk::ID3v2Chunk;
 mod list_chunk;
 pub use list_chunk::ListInfoChunk;
 
+mod unknown_chunk;
+pub use unknown_chunk::UnknownChunk;
 
 use lazy_static::lazy_static;
 
