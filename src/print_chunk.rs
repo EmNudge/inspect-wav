@@ -150,8 +150,33 @@ pub fn print_id3_chunk(id3_chunk: &ID3v2Chunk) {
     print_rows(rows);
 }
 
+fn as_maybe_utf8(bytes: Vec<u8>) -> String {
+    let mut result = Vec::new();
+    let mut seen_null_byte = false;
+
+    for byte in bytes {
+        if byte == 0x00 {
+            if !seen_null_byte {
+                seen_null_byte = true;
+                result.push(byte);
+            }
+        } else {
+            seen_null_byte = false;
+            result.push(byte);
+        }
+    }
+
+    result
+        .split(|x| *x == 0)
+        .collect::<Vec<&[u8]>>()
+        .into_iter()
+        .map(|x| String::from_utf8(x.to_vec()).unwrap())
+        .collect::<Vec<String>>()
+        .join(&" ...\\0 ".dimmed().to_string())
+}
 
 pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
+
     print_rows(vec![
         ("chunk id", format!("{} (unknown)", unknown_chunk.chunk_id)),
         (
@@ -159,8 +184,8 @@ pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
             unknown_chunk.chunk_size.green().to_string(),
         ),
         (
-            "data... (minimized)",
-            format!("[ ...{} items ]", &unknown_chunk.data.len()),
+            "data (utf-8 parse attempt)",
+            as_maybe_utf8(unknown_chunk.data.clone())
         ),
     ]);
 }
