@@ -1,4 +1,7 @@
-use crate::parse::{get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk, UnknownChunk};
+use crate::parse::{
+    get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk,
+    UnknownChunk,
+};
 use crate::print_utils::print_rows;
 use owo_colors::OwoColorize;
 
@@ -121,18 +124,9 @@ pub fn print_id3_chunk(id3_chunk: &ID3v2Chunk) {
             "size of id3 chunk (in bytes)",
             id3_chunk.chunk_size.to_string().green().to_string(),
         ),
-        (
-            "major version",
-            id3_chunk.major_version.to_string(),
-        ),
-        (
-            "minor version",
-            id3_chunk.minor_version.to_string(),
-        ),
-        (
-            "flags",
-            format!("{:08b}", id3_chunk.flags),
-        ),
+        ("major version", id3_chunk.major_version.to_string()),
+        ("minor version", id3_chunk.minor_version.to_string()),
+        ("flags", format!("{:08b}", id3_chunk.flags)),
         (
             "size of id3v2 (self reported)",
             id3_chunk.id3v2_size.to_string(),
@@ -176,7 +170,6 @@ fn as_maybe_utf8(bytes: Vec<u8>) -> String {
 }
 
 pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
-
     print_rows(vec![
         ("chunk id", format!("{} (unknown)", unknown_chunk.chunk_id)),
         (
@@ -185,7 +178,7 @@ pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
         ),
         (
             "data (utf-8 parse attempt)",
-            as_maybe_utf8(unknown_chunk.data.clone())
+            as_maybe_utf8(unknown_chunk.data.clone()),
         ),
     ]);
 }

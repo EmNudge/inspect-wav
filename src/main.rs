@@ -1,6 +1,8 @@
 use binrw::{io::Cursor, BinReaderExt};
-use std::{env, fs::File, io::Read, path::Path};
+use color_eyre::eyre::{eyre, Result};
+use std::{fs::File, io::Read};
 
+mod args;
 mod parse;
 mod print_chunk;
 mod print_utils;
@@ -13,21 +15,9 @@ use print_utils::print_position;
 
 use crate::{parse::UnknownChunk, print_chunk::print_unknown_chunk};
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    println!("");
-
-    let Some(path) = args.get(1) else {
-        println!("Usage: inspect_wav <path to wav file>");
-        return;
-    };
-
-    if !Path::new(path).exists() {
-        println!("ERR: file does not exist");
-        return;
-    }
-
-    let mut file = File::open(path).unwrap();
+fn main() -> Result<()> {
+    let args = args::get_args()?;
+    let mut file = File::open(&args.file).unwrap();
 
     let mut buffer: Vec<u8> = vec![];
     file.read_to_end(&mut buffer).unwrap();
@@ -53,15 +43,16 @@ fn main() {
         } else {
             let mut word_buff = [0u8; 4];
             cursor.read_exact(&mut word_buff).unwrap();
-            println!(
-                "ERR: unknown chunk: {:?}",
+            return Err(eyre!(
+                "Unknown chunk: {:?}",
                 String::from_utf8(word_buff.to_vec()).unwrap()
-            );
-            return;
+            ));
         }
         print_position(&cursor);
     }
 
     assert!(cursor.position() as usize == buffer.len());
     println!("\nFinished parsing!");
+
+    Ok(())
 }
