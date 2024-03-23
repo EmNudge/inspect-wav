@@ -1,148 +1,157 @@
+use std::fmt::Display;
+
 use crate::parse::{
     get_compression_code_str, DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk,
     UnknownChunk,
 };
-use crate::print_utils::print_rows;
+use crate::print_utils::get_rows_string;
 use owo_colors::OwoColorize;
 
-pub fn print_riff_chunk(riff_chunk: &RiffChunk) {
-    print_rows(vec![
-        ("chunk id", "'RIFF'".blue().to_string()),
-        (
-            "size of file (in bytes)",
-            riff_chunk.file_size.green().to_string(),
-        ),
-        ("wave identifier", riff_chunk.wave_ident.to_string()),
-    ]);
+impl Display for RiffChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rows = vec![
+            ("chunk id", "'RIFF'".blue().to_string()),
+            (
+                "size of file (in bytes)",
+                self.file_size.green().to_string(),
+            ),
+            ("wave identifier", self.wave_ident.to_string()),
+        ];
+        write!(f, "{}", get_rows_string(rows))?;
+        Ok(())
+    }
 }
 
-pub fn print_fmt_chunk(fmt_chunk: &FmtChunk) {
-    let mut rows = vec![
-        ("chunk id", "'fmt '".blue().to_string()),
-        (
-            "size of fmt chunk (in bytes)",
-            fmt_chunk.chunk_size.to_string().green().to_string(),
-        ),
-        (
-            "compression code",
-            format!(
-                "{} ({})",
-                fmt_chunk.compression_code,
-                get_compression_code_str(fmt_chunk.compression_code),
+impl Display for DataChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rows = vec![
+            ("chunk id", "'data'".blue().to_string()),
+            (
+                "size of data chunk (in bytes)",
+                self.chunk_size.to_string().green().to_string(),
             ),
-        ),
-        (
-            "number of channels",
-            fmt_chunk.number_of_channels.to_string(),
-        ),
-        ("sampling rate", fmt_chunk.sample_rate.to_string()),
-        ("byte rate", fmt_chunk.byte_rate.to_string()),
-        ("block align", fmt_chunk.block_align.to_string()),
-        ("bits per sample", fmt_chunk.bits_per_sample.to_string()),
-    ];
-
-    if let Some(extra_bytes) = &fmt_chunk.extra_bytes {
-        rows.push(("extra format bytes", extra_bytes.to_string()));
+            (
+                "data... (minimized)",
+                format!("[ ...{} items ]", &self.sample_data.len()),
+            ),
+        ];
+        write!(f, "{}", get_rows_string(rows))?;
+        Ok(())
     }
+}
 
-    if let Some(extended_chunk) = &fmt_chunk.extended_fmt_sub_chunk {
-        rows.extend(vec![
+impl Display for FmtChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut rows = vec![
+            ("chunk id", "'fmt '".blue().to_string()),
             (
-                "number of valid bits",
-                extended_chunk.num_valid_bits.to_string(),
+                "size of fmt chunk (in bytes)",
+                self.chunk_size.to_string().green().to_string(),
             ),
             (
-                "speaker position mask",
-                extended_chunk.channel_mask.to_string(),
-            ),
-            (
-                "actual compression code",
+                "compression code",
                 format!(
                     "{} ({})",
-                    extended_chunk.compression_code,
-                    get_compression_code_str(extended_chunk.compression_code),
+                    self.compression_code,
+                    get_compression_code_str(self.compression_code),
                 ),
             ),
+            ("number of channels", self.number_of_channels.to_string()),
+            ("sampling rate", self.sample_rate.to_string()),
+            ("byte rate", self.byte_rate.to_string()),
+            ("block align", self.block_align.to_string()),
+            ("bits per sample", self.bits_per_sample.to_string()),
+        ];
+
+        if let Some(extra_bytes) = &self.extra_bytes {
+            rows.push(("extra format bytes", extra_bytes.to_string()));
+        }
+
+        if let Some(extended_chunk) = &self.extended_fmt_sub_chunk {
+            rows.extend(vec![
+                (
+                    "number of valid bits",
+                    extended_chunk.num_valid_bits.to_string(),
+                ),
+                (
+                    "speaker position mask",
+                    extended_chunk.channel_mask.to_string(),
+                ),
+                (
+                    "actual compression code",
+                    format!(
+                        "{} ({})",
+                        extended_chunk.compression_code,
+                        get_compression_code_str(extended_chunk.compression_code),
+                    ),
+                ),
+                (
+                    "WAV GUID",
+                    extended_chunk
+                        .wav_guid
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<String>>()
+                        .join(" "),
+                ),
+            ]);
+        }
+
+        write!(f, "{}", get_rows_string(rows))?;
+        Ok(())
+    }
+}
+
+impl Display for ListInfoChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut rows = vec![
+            ("chunk id".to_string(), "'LIST'".blue().to_string()),
             (
-                "WAV GUID",
-                extended_chunk
-                    .wav_guid
-                    .iter()
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<String>>()
-                    .join(" "),
+                "size of LIST chunk (in bytes)".to_string(),
+                self.chunk_size.to_string().green().to_string(),
             ),
-        ]);
-    }
-
-    print_rows(rows);
-}
-
-pub fn print_list_chunk(list_chunk: &ListInfoChunk) {
-    let mut table = vec![
-        ("chunk id".to_string(), "'LIST'".blue().to_string()),
-        (
-            "size of LIST chunk (in bytes)".to_string(),
-            list_chunk.chunk_size.to_string().green().to_string(),
-        ),
-    ];
-
-    let mut text_chunks: Vec<(String, String)> = list_chunk
-        .data
-        .iter()
-        .map(|sub_chunk| (sub_chunk.info_id.clone(), sub_chunk.text.clone()))
-        .collect();
-
-    table.append(&mut text_chunks);
-
-    print_rows(
-        table
+        ];
+        let mut text_chunks: Vec<(String, String)> = self
+            .data
             .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect(),
-    );
-}
+            .map(|sub_chunk| (sub_chunk.info_id.clone(), sub_chunk.text.clone()))
+            .collect();
 
-pub fn print_data_chunk(data_chunk: &DataChunk) {
-    print_rows(vec![
-        ("chunk id", &"'data'".blue().to_string()),
-        (
-            "size of data chunk (in bytes)",
-            &data_chunk.chunk_size.to_string().green().to_string(),
-        ),
-        (
-            "data... (minimized)",
-            &format!("[ ...{} items ]", &data_chunk.sample_data.len()),
-        ),
-    ]);
-}
+        rows.append(&mut text_chunks);
 
-pub fn print_id3_chunk(id3_chunk: &ID3v2Chunk) {
-    let mut rows = vec![
-        ("chunk id", "'id3'".blue().to_string()),
-        (
-            "size of id3 chunk (in bytes)",
-            id3_chunk.chunk_size.to_string().green().to_string(),
-        ),
-        ("major version", id3_chunk.major_version.to_string()),
-        ("minor version", id3_chunk.minor_version.to_string()),
-        ("flags", format!("{:08b}", id3_chunk.flags)),
-        (
-            "size of id3v2 (self reported)",
-            id3_chunk.id3v2_size.to_string(),
-        ),
-    ];
+        write!(f, "{}", get_rows_string(rows))?;
 
-    if let Some(_xheader) = &id3_chunk.xheader {
-        todo!();
+        Ok(())
     }
-
-    for tag in &id3_chunk.tags {
-        rows.push(("tag", format!("{}: {}", tag.frame_id, tag.data)));
-    }
-
-    print_rows(rows);
 }
+
+impl Display for ID3v2Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut rows = vec![
+            ("chunk id", "'id3 '".blue().to_string()),
+            (
+                "size of id3 chunk (in bytes)",
+                self.chunk_size.to_string().green().to_string(),
+            ),
+            ("major version", self.major_version.to_string()),
+            ("minor version", self.minor_version.to_string()),
+            ("flags", format!("{:08b}", self.flags)),
+            ("size of id3v2 (self reported)", self.id3v2_size.to_string()),
+        ];
+
+        if let Some(_xheader) = &self.xheader {
+            todo!();
+        }
+
+        for tag in &self.tags {
+            rows.push(("tag", format!("{}: {}", tag.frame_id, tag.data)));
+        }
+
+        write!(f, "{}", get_rows_string(rows))?;
+        Ok(())
+    }
+}
+
 
 fn as_maybe_utf8(bytes: Vec<u8>) -> String {
     let mut result = Vec::new();
@@ -169,16 +178,20 @@ fn as_maybe_utf8(bytes: Vec<u8>) -> String {
         .join(&" ...\\0 ".dimmed().to_string())
 }
 
-pub fn print_unknown_chunk(unknown_chunk: &UnknownChunk) {
-    print_rows(vec![
-        ("chunk id", format!("{} (unknown)", unknown_chunk.chunk_id)),
-        (
-            "size of file (in bytes)",
-            unknown_chunk.chunk_size.green().to_string(),
-        ),
-        (
-            "data (utf-8 parse attempt)",
-            as_maybe_utf8(unknown_chunk.data.clone()),
-        ),
-    ]);
+impl Display for UnknownChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rows = vec![
+            ("chunk id", format!("{} (unknown)", self.chunk_id)),
+            (
+                "size of file (in bytes)",
+                self.chunk_size.green().to_string(),
+            ),
+            (
+                "data (utf-8 parse attempt)",
+                as_maybe_utf8(self.data.clone()),
+            ),
+        ];
+        write!(f, "{}", get_rows_string(rows))?;
+        Ok(())
+    }
 }

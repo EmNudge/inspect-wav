@@ -8,7 +8,7 @@ pub fn print_position<T>(cursor: &Cursor<T>) {
     );
 }
 
-pub fn print_rows(rows: Vec<(impl ToString, impl ToString)>) {
+pub fn get_rows_string(rows: Vec<(impl ToString, impl ToString)>) -> String {
     let string_rows: Vec<(String, String)> = rows
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -17,10 +17,13 @@ pub fn print_rows(rows: Vec<(impl ToString, impl ToString)>) {
     let max_key_width = string_rows.iter().map(|(k, _v)| k.len()).max().unwrap();
     let max_value_width = string_rows.iter().map(|(_k, v)| v.len()).max().unwrap();
 
-    println!(
+    let mut string_builder = vec![];
+
+    string_builder.push(format!(
         "{}",
         format!("╭{}", "-".repeat(max_key_width + max_value_width + 4)).dimmed()
-    );
+    ));
+
     let table = string_rows
         .iter()
         .map(|(k, v)| {
@@ -41,9 +44,10 @@ pub fn print_rows(rows: Vec<(impl ToString, impl ToString)>) {
             .to_string(),
         );
 
-    println!("{}", table);
-    println!(
+    string_builder.push(format!("{}", table));
+    string_builder.push(format!(
         "{}",
         format!("╰{}", "-".repeat(max_key_width + max_value_width + 4)).dimmed()
-    );
+    ));
+    string_builder.join("\n")
 }
