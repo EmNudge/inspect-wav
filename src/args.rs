@@ -8,6 +8,9 @@ use color_eyre::eyre::{eyre, Result};
 pub struct Args {
   #[arg(short, long, help = "The WAV file to inspect")]
   pub file: String,
+  
+  #[arg(short, long, help = "Whether to use a TUI", default_value = "false")]
+  pub tui: bool,
 }
 
 pub fn get_args() -> Result<Args> {
