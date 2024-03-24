@@ -44,7 +44,7 @@ pub fn get_rows_string(rows: Vec<(impl ToString, impl ToString)>) -> String {
             .to_string(),
         );
 
-    string_builder.push(format!("{}", table));
+    string_builder.push(table);
     string_builder.push(format!(
         "{}",
         format!("╰{}", "-".repeat(max_key_width + max_value_width + 4)).dimmed()

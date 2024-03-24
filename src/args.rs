@@ -14,8 +14,6 @@ pub struct Args {
 }
 
 pub fn get_args() -> Result<Args> {
-  println!("");
-
   let args = Args::parse();
 
   if !Path::new(&args.file).exists() {

@@ -6,7 +6,6 @@ mod args;
 mod parse;
 mod print_chunk;
 mod print_utils;
-mod tui;
 
 use parse::{DataChunk, FmtChunk, ID3v2Chunk, ListInfoChunk, RiffChunk, UnknownChunk};
 use print_utils::print_position;
@@ -81,9 +80,11 @@ fn display_in_tui(cursor: &mut Cursor<&Vec<u8>>) -> Result<()> {
 }
 
 fn display_stdout(cursor: &mut Cursor<&Vec<u8>>) -> Result<()> {
+    println!();
+
     let riff_chunk: RiffChunk = cursor.read_le().unwrap();
     println!("{}", riff_chunk);
-    print_position(&cursor);
+    print_position(cursor);
 
     let mut chunk_names = vec![("RIFF", riff_chunk.file_size)];
 
@@ -112,7 +113,7 @@ fn display_stdout(cursor: &mut Cursor<&Vec<u8>>) -> Result<()> {
                 String::from_utf8(word_buff.to_vec()).unwrap()
             ));
         }
-        print_position(&cursor);
+        print_position(cursor);
     }
 
     Ok(())
